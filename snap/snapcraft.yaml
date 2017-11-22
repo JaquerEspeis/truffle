@@ -1,5 +1,6 @@
 name: truffle
-version: master
+version: develop
+version-script: git -C parts/$SNAPCRAFT_PROJECT_NAME/build describe --tags
 summary: A development framework for Ethereum
 description: |
   Truffle is the most popular development framework for Ethereum with a mission
@@ -16,6 +17,22 @@ apps:
 parts:
   truffle:
     source: .
+    source-type: git
     plugin: nodejs
     build-packages: [g++, make, python]
     node-package-manager: yarn
+    prepare: |
+      #last_committed_tag="$(git describe --tags --abbrev=0)"
+      last_released_tag="$(snap info $SNAPCRAFT_PROJECT_NAME | awk '$1 == "beta:" { print $2 }')"
+      # If the latest tag from the upstream project has not been released to
+      # beta, build that tag instead of master.
+      if [ "${last_committed_tag}" != "${last_released_tag}" ]; then
+        # XXX This should be run on the pre-pull step, which snapcraft doesn't
+        # have yet.
+        # prepare runs after pull, and the nodejs pull makes changes to the
+        # source. We can stash them, because build will redo the same with the
+        # tagged source.
+        # --elopio - 20171121
+        git stash
+        git checkout "${last_committed_tag}"
+      fi
